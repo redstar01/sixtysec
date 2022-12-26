@@ -66,7 +66,7 @@ migrate-up: ### migration up
 	migrate -source file://migrations -database $(SQLITE_SOURCE) up
 .PHONY: migrate-up
 
-migrate-down: ### migration up
+migrate-down: ### migration down
 	migrate -source file://migrations -database $(SQLITE_SOURCE) down
 .PHONY: migrate-down
 

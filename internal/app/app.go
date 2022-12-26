@@ -24,6 +24,7 @@ func Run(cfg *config.Config) {
 	if err != nil {
 		l.Fatal(err)
 	}
+
 	defer func() { _ = db.Close() }()
 
 	pref := telebot.Settings{

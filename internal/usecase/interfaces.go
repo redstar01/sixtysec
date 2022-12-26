@@ -13,14 +13,13 @@ type (
 	// Game - main game logic.
 	Game interface {
 		GameStart(ctx context.Context, p Player, questionCount int) (chan *entity.Quiz, error)
-		Answer(p Player)
+		AnswerCheck(quizID, answerID int64, p Player) error
+		GetAndFlushProgress(p Player) GameState
 	}
 
 	// GameRepo - game repository.
 	GameRepo interface {
 		GetRandomPuzzle(context.Context) (*entity.Quiz, error)
-		NewGame(context.Context) (*entity.Game, error)
-		GetGameByID(ctx context.Context, gameID int) (*entity.Game, error)
-		FinishGameByID(ctx context.Context, gameID int) (bool, error)
+		GetPuzzleByID(ctx context.Context, quizID int64) (*entity.Quiz, error)
 	}
 )
