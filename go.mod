@@ -3,10 +3,10 @@ module github.com/redstar01/sixtysec
 go 1.18
 
 require (
-	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/ilyakaznacheev/cleanenv v1.4.1
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/mattn/go-sqlite3 v1.14.6
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/rs/zerolog v1.28.0
 	gopkg.in/telebot.v3 v3.1.2
 )

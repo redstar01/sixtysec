@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/patrickmn/go-cache"
 	"gopkg.in/telebot.v3"
 
 	"github.com/redstar01/sixtysec/config"
@@ -13,6 +14,7 @@ import (
 	"github.com/redstar01/sixtysec/internal/usecase/repo"
 	"github.com/redstar01/sixtysec/pkg/logger"
 
+	// sqlite connector.
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -38,8 +40,9 @@ func Run(cfg *config.Config) {
 	}
 
 	quizRepo := repo.New(db)
+	progressRepo := repo.NewProgressRepo(cache.New(5*time.Minute, 10*time.Minute))
 
-	ucq := usecase.New(cfg, quizRepo)
+	ucq := usecase.New(cfg, quizRepo, progressRepo)
 
 	telegram.NewRouter(cfg, b, ucq)
 

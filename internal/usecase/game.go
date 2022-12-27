@@ -9,32 +9,28 @@ import (
 	"github.com/redstar01/sixtysec/internal/entity"
 )
 
-type GameState struct {
-	SuccessQuestions int
-	FailedQuestions  int
-}
-
 type Player int64
 
 // gameUseCase -.
 type gameUseCase struct {
-	cfg  *config.Config
+	cfg *config.Config
+
 	repo GameRepo
+
+	pLock sync.RWMutex
+	pr    ProgressRepo
 
 	qLock       sync.RWMutex
 	cancelState map[Player]chan struct{}
-
-	gpLock       sync.RWMutex
-	gameProgress map[Player]GameState
 }
 
 // New -.
-func New(cfg *config.Config, q GameRepo) Game {
+func New(cfg *config.Config, q GameRepo, pr ProgressRepo) Game {
 	return &gameUseCase{
-		cfg:          cfg,
-		repo:         q,
-		cancelState:  map[Player]chan struct{}{},
-		gameProgress: make(map[Player]GameState),
+		cfg:         cfg,
+		repo:        q,
+		cancelState: map[Player]chan struct{}{},
+		pr:          pr,
 	}
 }
 
@@ -45,7 +41,8 @@ func (q *gameUseCase) GameStart(ctx context.Context, p Player, questionCount int
 		for i := 0; i < questionCount; i++ {
 			quiz, err := q.repo.GetRandomPuzzle(context.Background())
 			if err != nil {
-				time.Sleep(time.Second * 10)
+				const timeToSleep = 10
+				time.Sleep(time.Second * timeToSleep)
 
 				continue
 			}
@@ -96,50 +93,65 @@ func (q *gameUseCase) AnswerCheck(quizID, answerID int64, p Player) error {
 		return err
 	}
 
-	correctAnswered := false
+	isCorrect := false
 
 	for _, answer := range quiz.Answers {
 		if answer.IsCorrect && answer.ID == answerID {
-			correctAnswered = true
+			isCorrect = true
 		}
 	}
 
-	q.gpLock.Lock()
-	if gp, ok := q.gameProgress[p]; ok {
-		if correctAnswered {
-			gp.SuccessQuestions++
-			q.gameProgress[p] = gp
-		} else {
-			gp.FailedQuestions++
-			q.gameProgress[p] = gp
-		}
+	if err := q.progressUpdate(p, isCorrect); err != nil {
+		return err
+	}
+
+	q.pushNextQuestion(p)
+
+	return nil
+}
+
+func (q *gameUseCase) GetAndFlushProgress(p Player) entity.GameProgress {
+	q.pLock.Lock()
+	defer q.pLock.Unlock()
+
+	gp, err := q.pr.Get(p)
+	if err != nil {
+		return entity.GameProgress{}
+	}
+
+	if err = q.pr.Delete(p); err != nil {
+		return gp
+	}
+
+	return gp
+}
+
+func (q *gameUseCase) progressUpdate(p Player, isCorrect bool) error {
+	q.pLock.Lock()
+	defer q.pLock.Unlock()
+
+	gp, err := q.pr.Get(p)
+	if err != nil {
+		return err
+	}
+
+	if isCorrect {
+		gp.SuccessQuestions++
 	} else {
-		if correctAnswered {
-			q.gameProgress[p] = GameState{SuccessQuestions: 1}
-		} else {
-			q.gameProgress[p] = GameState{FailedQuestions: 1}
-		}
+		gp.FailedQuestions++
 	}
-	q.gpLock.Unlock()
 
+	if err := q.pr.Set(p, gp); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (q *gameUseCase) pushNextQuestion(p Player) {
 	q.qLock.RLock()
 	if _, ok := q.cancelState[p]; ok {
 		q.cancelState[p] <- struct{}{}
 	}
 	q.qLock.RUnlock()
-
-	return nil
-}
-
-func (q *gameUseCase) GetAndFlushProgress(p Player) GameState {
-	q.gpLock.Lock()
-	defer q.gpLock.Unlock()
-
-	if gs, ok := q.gameProgress[p]; ok {
-		delete(q.gameProgress, p)
-
-		return gs
-	}
-
-	return GameState{}
 }

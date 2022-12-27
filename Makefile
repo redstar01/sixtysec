@@ -70,3 +70,6 @@ migrate-down: ### migration down
 	migrate -source file://migrations -database $(SQLITE_SOURCE) down
 .PHONY: migrate-down
 
+generate: ### create mocks
+	go generate ./...
+.PHONY: generate

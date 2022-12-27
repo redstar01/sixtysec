@@ -1,11 +1,13 @@
 linters-settings:
   gci:
-    local-prefixes: github.com/evrone/go-clean-template
+    local-prefixes: github.com/redstar01/sixtysec
   dupl:
     threshold: 100
   errorlint:
     errorf: true
   errcheck:
+    exclude-functions:
+      - (gopkg.in/telebot.v3.Context).Send
     check-type-assertions: true
     check-blank: true
   exhaustive:

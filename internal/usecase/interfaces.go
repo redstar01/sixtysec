@@ -14,12 +14,19 @@ type (
 	Game interface {
 		GameStart(ctx context.Context, p Player, questionCount int) (chan *entity.Quiz, error)
 		AnswerCheck(quizID, answerID int64, p Player) error
-		GetAndFlushProgress(p Player) GameState
+		GetAndFlushProgress(p Player) entity.GameProgress
 	}
 
 	// GameRepo - game repository.
 	GameRepo interface {
 		GetRandomPuzzle(context.Context) (*entity.Quiz, error)
 		GetPuzzleByID(ctx context.Context, quizID int64) (*entity.Quiz, error)
+	}
+
+	// ProgressRepo - game progress data.
+	ProgressRepo interface {
+		Get(p Player) (entity.GameProgress, error)
+		Set(p Player, gp entity.GameProgress) error
+		Delete(p Player) error
 	}
 )
