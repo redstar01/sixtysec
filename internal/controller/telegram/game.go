@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -30,7 +31,7 @@ func (r *router) startGame(c telebot.Context) error {
 
 	time.Sleep(time.Second * 1)
 
-	quizzes, err := r.ug.GameStart(ctx, usecase.Player(c.Chat().ID), 10)
+	quizzes, err := r.ug.GameStart(ctx, usecase.Player(c.Chat().ID), r.cfg.GameQuestionsCount)
 	if err != nil {
 		return err
 	}
@@ -66,13 +67,13 @@ func (r *router) startGame(c telebot.Context) error {
 			continue
 		}
 
-		r.pmLock.Lock()
-		r.pollMapper[msg.Poll.ID] = pollMap{
+		pci := pollCacheItem{
 			quizID:             quiz.ID,
 			correctAnswerID:    correctOptionID,
 			correctOptionIndex: correctOptionIndex,
 		}
-		r.pmLock.Unlock()
+
+		r.c.Set(msg.Poll.ID, pci, time.Duration(r.cfg.CacheDefaultExpiration)*time.Minute)
 	}
 
 	gameProgress := r.ug.GetAndFlushProgress(usecase.Player(c.Chat().ID))
@@ -81,26 +82,36 @@ func (r *router) startGame(c telebot.Context) error {
 	return nil
 }
 
+var (
+	errCacheNotFound       = errors.New("answerHandle - poll is not found in the cache")
+	errCacheTypeUnexpected = errors.New("answerHandle - poll has not appropriate type")
+)
+
 func (r *router) answerHandle(c telebot.Context) error {
-	r.pmLock.RLock()
-	if pollCache, ok := r.pollMapper[c.PollAnswer().PollID]; ok {
-		var correctAnswerID int64 = -1
+	cache, ok := r.c.Get(c.PollAnswer().PollID)
+	if !ok {
+		return errCacheNotFound
+	}
 
-		for _, chosenOption := range c.PollAnswer().Options {
-			if pollCache.correctOptionIndex == chosenOption {
-				correctAnswerID = pollCache.correctAnswerID
+	pollCache, ok := cache.(pollCacheItem)
+	if !ok {
+		return errCacheTypeUnexpected
+	}
 
-				break
-			}
-		}
+	var correctAnswerID int64 = -1
 
-		err := r.ug.AnswerCheck(pollCache.quizID, correctAnswerID, usecase.Player(c.Sender().ID))
-		if err != nil {
-			return err
+	for _, chosenOption := range c.PollAnswer().Options {
+		if pollCache.correctOptionIndex == chosenOption {
+			correctAnswerID = pollCache.correctAnswerID
+
+			break
 		}
 	}
 
-	r.pmLock.RUnlock()
+	err := r.ug.AnswerCheck(pollCache.quizID, correctAnswerID, usecase.Player(c.Sender().ID))
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -110,6 +121,8 @@ func (r *router) stopGame(c telebot.Context) error {
 	if stopper, ok := r.gameStoppers[c.Sender().ID]; ok {
 		stopper()
 		delete(r.gameStoppers, c.Sender().ID)
+	} else {
+		_ = c.Send(fmt.Sprintf("Текущая игра уже была закончена, поиграть жми /newgame"))
 	}
 	r.gsLock.Unlock()
 

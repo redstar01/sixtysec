@@ -40,11 +40,11 @@ func Run(cfg *config.Config) {
 	}
 
 	quizRepo := repo.New(db)
-	progressRepo := repo.NewProgressRepo(cache.New(5*time.Minute, 10*time.Minute))
+	progressRepo := repo.NewProgressRepo(cache.New(time.Duration(cfg.CacheDefaultExpiration)*time.Minute, time.Duration(cfg.CacheCleanupInterval)*time.Minute))
 
 	ucq := usecase.New(cfg, quizRepo, progressRepo)
 
-	telegram.NewRouter(cfg, b, ucq)
+	telegram.NewRouter(cfg, b, ucq, cache.New(time.Duration(cfg.CacheDefaultExpiration)*time.Minute, time.Duration(cfg.CacheCleanupInterval)*time.Minute))
 
 	b.Start()
 }

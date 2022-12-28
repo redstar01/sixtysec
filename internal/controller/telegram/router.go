@@ -11,12 +11,6 @@ import (
 )
 
 type (
-	pollMap struct {
-		quizID             int64
-		correctAnswerID    int64
-		correctOptionIndex int
-	}
-
 	router struct {
 		cfg *config.Config
 		b   *telebot.Bot
@@ -25,19 +19,18 @@ type (
 		gsLock       sync.RWMutex
 		gameStoppers map[int64]context.CancelFunc
 
-		pmLock     sync.RWMutex
-		pollMapper map[string]pollMap
+		c PollCache
 	}
 )
 
 // NewRouter - creates telegram command to handler router.
-func NewRouter(cfg *config.Config, b *telebot.Bot, ug usecase.Game) {
+func NewRouter(cfg *config.Config, b *telebot.Bot, ug usecase.Game, c PollCache) {
 	r := &router{
 		cfg:          cfg,
 		b:            b,
 		ug:           ug,
 		gameStoppers: make(map[int64]context.CancelFunc),
-		pollMapper:   make(map[string]pollMap),
+		c:            c,
 	}
 	r.b.Handle("/help", r.help)
 	r.b.Handle("/start", r.help)

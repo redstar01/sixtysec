@@ -42,6 +42,7 @@ func (q *gameUseCase) GameStart(ctx context.Context, p Player, questionCount int
 			quiz, err := q.repo.GetRandomPuzzle(context.Background())
 			if err != nil {
 				const timeToSleep = 10
+
 				time.Sleep(time.Second * timeToSleep)
 
 				continue
@@ -132,7 +133,6 @@ func (q *gameUseCase) progressUpdate(p Player, isCorrect bool) error {
 
 	gp, err := q.pr.Get(p)
 	if err != nil {
-		return err
 	}
 
 	if isCorrect {
