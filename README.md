@@ -1,4 +1,7 @@
-# Hot to migrate 
+# 60 sec quiz game
+It's a variant of a quiz game developed in Golang as Telegram bot
+
+# How to migrate 
 
 
 ```
