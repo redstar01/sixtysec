@@ -118,13 +118,14 @@ func (r *router) answerHandle(c telebot.Context) error {
 
 func (r *router) stopGame(c telebot.Context) error {
 	r.gsLock.Lock()
+	defer r.gsLock.Unlock()
+
 	if stopper, ok := r.gameStoppers[c.Sender().ID]; ok {
 		stopper()
 		delete(r.gameStoppers, c.Sender().ID)
 	} else {
 		_ = c.Send(fmt.Sprintf("Текущая игра уже была закончена, поиграть жми /newgame"))
 	}
-	r.gsLock.Unlock()
 
 	return nil
 }

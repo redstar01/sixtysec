@@ -120,9 +120,7 @@ func (q *gameUseCase) GetAndFlushProgress(p Player) entity.GameProgress {
 		return entity.GameProgress{}
 	}
 
-	if err = q.pr.Delete(p); err != nil {
-		return gp
-	}
+	_ = q.pr.Delete(p)
 
 	return gp
 }
